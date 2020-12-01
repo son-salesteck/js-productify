@@ -1,27 +1,58 @@
-
 /**
  * The jQuery plugin productify.
- * @name productify
+ * @name jQuery.fn.productify()
  * @see {@link http://docs.jquery.com/Plugins/Authoring The jQuery Plugin Guide}
  */
 
-var _Field;
+
 (function ($) {
     // $ = jQuery.noConflict();
 
+    /**
+     *
+     * @typedef {Object} productifyOptions
+     * $.fn.productify.defaults.options
+     * @property {string} [addBtnSelector]
+     * @property {string} [ajax = '/_api/_eshop/'] the url where to query products
+     * @property {string} [cartSelector] this define the cart's container to add element in
+     * @property {string} [controlSelector] DOM selector to display filter's control
+     * @property {string} [dataSrc = 'product'] source of the query
+     * @property {Array<fields>} fields all fields of productify
+     * @property {fieldsGroupOptions} [fieldsGroup = fieldsGroupOptions] defaults fields  group options
+     * @property {string} [idSrc = 'idCode'] data's property to get the id
+     * @property {boolean} [image = false]
+     * @property {string} [lang = Fn._getLang()] language is sent with ajax data to retrieve elements with the appropriate language
+     * @property {string} [merchantId = merchantId()] Merchant's id is sent with ajax data to retrieve the product from that merchant
+     * @property {string} [priceSrc = 'price'] data's property to get the price
+     * @property {string} [qtySelector]
+     * @property {string} [removeBtnSelector]
+     * @property {boolean} [search = true] define if process general search or not and draw the search input
+     * @property {string} [sessionUrl = '/_api/_eshop/'] url where the cart's operation should send
+     * @property {jquerySelector|html} [template] the product's template, can be html string or a jquerySelector
+     *
+     */
+
+    /**
+     * @typedef {Object} fieldsGroupOptions
+     * @property {boolean} [_valid = false]
+     * @property {string} containerSelector
+     * @property {string} data
+     * @property {string} idSrc
+     * @property {string} options
+     * @property {string} template
+     * @property {string} [title = '']
+     * @property {string} [titleSelector = '']
+     */
 
 
     /**
      *
-     * @int
      * @constant {string} _apiSrc
      * @description test
      * @type {string}
      * @default '/_api/_eshop/'
      */
-    var _apiSrc = '/_api/_eshop/',
-        lang = Fn._getLang()
-    ;
+    var _apiSrc = '/_api/_eshop/';
 
     /**
      * Represents a book.
@@ -84,9 +115,91 @@ var _Field;
     };
 
     /**
-     * Show comments
-     * @class productify
-     * @param {object} options
+     * Productify $.fn.productify
+     * @module Productify
+     * @param {productifyOptions} options
+     * @example
+     *
+     * var productifyOptions  = {
+     *      cartSelector: '#cart-items',
+     *      idSrc: "idCode",
+     *      fieldsGroup: {
+     *          idSrc : 'idCode',
+     *          title : "name",
+     *          data: "categoryIdCode",
+     *          template :
+     *          "<div>" +
+     *          "<h4 class='category-title text-accent text-sm'></h4>" +
+     *          "<div class='category-container'></div>" +
+     *          "<div class='separator'></div>" +
+     *          "</div>",
+     *          titleSelector : ".category-title",
+     *          containerSelector : ".category-container"
+     *      },
+     *      fields: [
+     *          {
+     *              data: "categoryIdCode",
+     *              title: "Catégorie",
+     *              type: "checkbox",
+     *              filterContain : true,
+     *              searchable : false,
+     *              render : function (data, rowData, field, options) {
+     *                  var categoryName = "";
+     *                  if (Fn._isStringNotEmpty(data)) {
+     *                      // var category = Fn._getObjByProp(allCategory, data, null);
+     *                      var category = options.find(function (element) {
+     *                          return Object.keys(element)[0] === data;
+     *                      });
+     *                      if(category !== null && category.hasOwnProperty(data)){
+     *                          category = category[data];
+     *                      }
+     *                      categoryName = Fn._getObjByProp(category, "name", null);
+     *                  }
+     *                  return categoryName;
+     *              }
+     *          },
+     *          {
+     *              data: "price",
+     *              title: "Prix",
+     *              type: "integer",
+     *              render : $.fn.productify.render.price
+     *          },
+     *          {
+     *              data: "idCode",
+     *              searchable : false
+     *          }, {
+     *              data: "imageWebPath",
+     *              type: "image",
+     *              searchable : false,
+     *              render : $.fn.productify.render.image
+     *          },
+     *          {
+     *              data: "name"
+     *          },
+     *          {
+     *              data: "description"
+     *          },
+     *          {
+     *              title: "Allergènes",
+     *              data: "allergen",
+     *              type: "allergen",
+     *              filterContain : false,
+     *              searchable : false,
+     *              render : $.fn.productify.render.allergen
+     *          },
+     *          {
+     *              title: "Options",
+     *              data: "productOptions",
+     *              filter : false,
+     *              searchable : false
+     *          }
+     *      ],
+     *      qtySelector : '.qty-input',
+     *      controlSelector : '.search-controls',
+     *      addBtnSelector: '.product-add',
+     *      removeBtnSelector: '.cart-item-remove'
+     * };
+     * $('#product-list').productify(productifyOptions);
      */
     var Productify = $.fn.productify = function productify(options) {
 
@@ -101,11 +214,11 @@ var _Field;
          */
         var settings = fnProductify.static._mergeSetting(options);
 
-        var productsData = [];
+        var _productsData = [];
 
-        var productsOptions = {};
+        var _options = {};
 
-        var productsCart = {};
+        var _productsCart = [];
 
         var that = this;
 
@@ -129,99 +242,138 @@ var _Field;
 
         function setData(data) {
             if (Fn._isSameType(data, {}) && !$.isEmptyObject(data)) {
-                productsData = data;
-                _displayProductsData = productsData.slice();
+                _productsData = data;
+                _displayProductsData = _productsData.slice();
             }
-            return productsData;
+            return _productsData;
         }
 
         function setOption(options) {
             if (Fn._isSameType(options, []) && !$.isEmptyObject(options)) {
-                productsOptions = options;
+                _options = options;
                 $.each(settings.fields, function (index, field) {
                     var data = field[indexes.fieldOptions.data];
-                    var fieldOption = Fn._getObjByProp(productsOptions, data, null);
-                    if (fieldOption !== null) {
-                        field[indexes.fieldOptions.options] = fieldOption;
-                    }
+                    field[indexes.fieldOptions.options] = Fn._getObjByProp(_options, data, []);
                 });
             }
-            return productsOptions;
+            return _options;
         }
 
-        function updateCart(product, qty) {
-            qty = parseInt(qty);
-            Productify.event.onUpdateCart(that);
-            var idSrc = Fn._getObjByProp(settings, indexes.idSrc, "");
-            var productId = Fn._getObjByProp(product, idSrc, null);
-            if (Productify.defaults.debug) {
-                console.log("updateCart(product, qty)", {
-                    product: product, qty: qty, idSrc: idSrc, productsCart: productsCart, productId: productId
-                });
+        function addToCart(product, qty) {
+            qty = Fn._isNumeric(qty) && parseInt(qty) > 0 ? parseInt(qty) : 1;
+            var priceSrc = Fn._getObjByProp(settings, indexes.priceSrc, '');
+            if(Fn._isStringNotEmpty(priceSrc)){
+                var price = Fn._getObjByProp(product, priceSrc, 0);
+                price = parseInt(price);
+
+                var productExtraTotal = Fn._getObjByProp(product, _oIndexes._extraOptionsTotal, 0);
+                productExtraTotal = parseInt(productExtraTotal);
+
+                var extraOptions = Fn._getObjByProp(product, _oIndexes._extraOptions, []);
+
+                product[indexes.fieldOptions._qty] = qty;
+                product[priceSrc] = price;
+                product[_oIndexes._extraOptionsTotal] = productExtraTotal;
+                product[_oIndexes._extraOptions] = extraOptions;
+                product[indexes._cartElementTotal] = (price + productExtraTotal ) * qty;
             }
-            if (Fn._isStringNotEmpty(productId)) {
-                if (qty > 0) {
-                    //add
-                    if (Fn._getObjectLength(productsCart) > 0) {
-                        var element = Fn._getObjByProp(productsCart, productId, null);
-                        if (Productify.defaults.debug) {
-                            console.log("Fn._getObjectLength(productsCart) > 0", {
-                                element: element
-                            });
-                        }
-                        if (element) {
-                            var elementQty = parseInt(Fn._getObjByProp(element, indexes.fieldOptions._qty, 0));
-                            qty = elementQty + qty;
-                        }
-                    }
-                    product[indexes.fieldOptions._qty] = qty;
-                    productsCart[productId] = product;
-                    fnProductify.cart._addElementToCart(that, product);
 
-                } else {
-                    //remove
-                    if (Fn._getObjectLength(productsCart) > 0) {
-                        var cartElement = Fn._getObjByProp(productsCart, productId, null);
-                        if (cartElement) {
-                            var cartElementQty = cartElement[indexes.fieldOptions._qty];
-                            var qtyAbsolute = Math.abs(qty);
-                            if (qtyAbsolute >= cartElementQty || qty === 0) {
-                                delete productsCart[productId];
-                            } else {
-                                productsCart[indexes.fieldOptions._qty] = cartElementQty + qty;
-                            }
-                        }
-                    }
+            var found = false;
+            if(_productsCart.length > 0){
+                var foundedIndex = indexOfProductInCart(product);
+                if(foundedIndex > -1 && foundedIndex < _productsCart.length){
+                    var cartProduct = _productsCart[foundedIndex];
+                    if( !$.isEmptyObject(cartProduct) ){
+                        cartProduct[indexes.fieldOptions._qty] += qty;
 
+                        var cartPrice = Fn._getObjByProp(cartProduct, priceSrc, 0);
+                        cartPrice = parseInt(cartPrice);
+
+                        var cartExtraTotal = Fn._getObjByProp(cartProduct, _oIndexes._extraOptionsTotal, 0);
+                        cartExtraTotal = parseInt(cartExtraTotal);
+
+                        var cartExtraOptions = Fn._getObjByProp(cartProduct, _oIndexes._extraOptions, []);
+
+                        cartProduct[priceSrc] = price;
+                        cartProduct[_oIndexes._extraOptionsTotal] = cartExtraTotal;
+                        cartProduct[_oIndexes._extraOptions] = cartExtraOptions;
+                        cartProduct[indexes._cartElementTotal] = (cartPrice + cartExtraTotal ) * qty;
+                        found = true;
+                    }
                 }
-                updateSession();
-                fnProductify.cart._updateCartTotal(that);
             }
+            if(found === false){
+                product[indexes.fieldOptions._qty] = qty;
+                _productsCart.push(product);
+            }
+            updateSession();
+
         }
+
+        function indexOfProductInCart(product) {
+            var clonedProduct = $.extend({}, product);
+
+            console.log("indexOfProductInCart", {
+                clonedProduct: clonedProduct
+            });
+            delete clonedProduct[indexes.fieldOptions._qty];
+            delete clonedProduct[indexes._cartElementTotal];
+            return  _productsCart.findIndex(function (elem, index) {
+                var cloned = $.extend({}, elem);
+                console.log("cloned:"+index, {
+                    cloned: cloned
+                });
+                delete cloned[indexes.fieldOptions._qty];
+                delete cloned[indexes._cartElementTotal];
+                if( !clonedProduct.hasOwnProperty(_oIndexes._extraOptions)){
+                    delete cloned[_oIndexes._extraOptions];
+                }
+                if( !clonedProduct.hasOwnProperty(_oIndexes._extraOptionsTotal)){
+                    delete cloned[_oIndexes._extraOptionsTotal];
+                }
+                if( !clonedProduct.hasOwnProperty(indexes._cartElementTotal)){
+                    delete cloned[indexes._cartElementTotal];
+                }
+                var strProd = JSON.stringify(clonedProduct);
+                var strClone = JSON.stringify(cloned);
+                var isSame = strProd === strClone;
+
+                console.log({
+                    product: product, clonedProduct : clonedProduct, cloned : cloned, isSame : isSame, strProd : strProd, strClone : strClone
+                });
+                return isSame;
+            });
+            // return returnIndex;
+
+        }
+
 
         function updateSession() {
+            console.log({
+                _productsCart : _productsCart
+            });
             if (Fn._isStringNotEmpty(settings.sessionUrl)) {
-                if (Productify.defaults.debug) {
-                    console.log("updateSession() called", {productsCart: that.cart()});
-                }
-
-
                 $.post(settings.sessionUrl, {
-                    _q: 'cart', _cartElements: productsCart,
+                    _q: 'cart', _cartElements: JSON.stringify(_productsCart),
+                    // _q: 'cart', _cartElements: _productsCart,
                     merchantId: settings.merchantId, lang: settings.lang, _event: "update"
-                }).done(function (ajaxResponse) {
-                    if (Productify.defaults.debug) {
-                        console.log("updateSession() called", {
-                            productsCart: productsCart,
-                            ajaxResponse: ajaxResponse
+                }, function () {}, "json").done(function (response) {
+                    if (Productify.defaults.debug ) {
+                        console.log("_updateSession() called", {
+                            productsCart: _productsCart,
+                            response: response
                         });
+                    }
+                    if(response.status === true){
+                        var arrayCartElement = response.data;
+                        drawCartElement(arrayCartElement);
                     }
                 });
             }
         }
 
         function loadSessionCart() {
-            if (Productify.defaults.debug) {
+            if (Productify.defaults.debug ) {
                 console.log("loadSessionCart() called", {});
             }
             if (Fn._isStringNotEmpty(settings.sessionUrl)) {
@@ -229,21 +381,42 @@ var _Field;
                 $.post(settings.sessionUrl, {
                     _q: 'cart', _event: "load", merchantId: settings.merchantId, lang: settings.lang
                 }).done(function (response) {
-                    response = JSON.parse(response);
-                    var arrayCartElement = response.data;
-                    if (Fn._getObjectLength(arrayCartElement) > 0) {
-                        $.each(arrayCartElement, function (index, cartElement) {
-                            if (Productify.defaults.debug) {
-                                console.log({cartElement: cartElement});
-                            }
-                            var _qty = Fn._getObjByProp(cartElement, indexes.fieldOptions._qty, null);
-                            if (_qty !== null) {
-                                that.addToCart(cartElement, parseInt(_qty));
-                            }
-                        });
+                    if( Fn._isJsonString(response) ){
+                        response = JSON.parse(response);
+                        if(response.status === true){
+                            var arrayCartElement = response.data;
+                            drawCartElement(arrayCartElement);
+                        }
                     }
                 });
             }
+        }
+
+        function drawCartElement(arrayCartElement) {fnProductify.cart._emptyCart(that);
+            $.each(arrayCartElement, function (index, cartElement) {
+                if (Productify.defaults.debug ) {
+                    console.log({cartElement: cartElement});
+                }
+                var priceSrc = Fn._getObjByProp(settings, indexes.priceSrc, '');
+                if(Fn._isStringNotEmpty(priceSrc)){
+                    var qty = Fn._getObjByProp(cartElement, indexes.fieldOptions._qty, null);
+                    var price = Fn._getObjByProp(cartElement, priceSrc, null);
+                    var productExtraTotal = Fn._getObjByProp(cartElement, _oIndexes._extraOptionsTotal, 0);
+                    var extraOptions = Fn._getObjByProp(cartElement, _oIndexes._extraOptions, []);
+                    if(Fn._isNumeric(qty) && Fn._isNumeric(price) && Fn._isNumeric(productExtraTotal)){
+                        cartElement[indexes.fieldOptions._qty] = parseInt(qty);
+                        cartElement[priceSrc] = parseInt(price);
+                        cartElement[_oIndexes._extraOptionsTotal] = parseInt(productExtraTotal);
+                        cartElement[_oIndexes._extraOptions] = extraOptions;
+                        cartElement[indexes._cartElementTotal] =
+                            (cartElement[priceSrc] + cartElement[_oIndexes._extraOptionsTotal] ) * cartElement[indexes.fieldOptions._qty];
+                        fnProductify.cart._addElementToCart(that, cartElement);
+                    }
+                }
+            });
+            _productsCart = arrayCartElement;
+            fnProductify.cart._updateCartTotal(that);
+            Productify.initListener(that);
         }
 
         function generalSearch(data, searchValue) {
@@ -267,10 +440,6 @@ var _Field;
                     var elementId = Object.keys(element)[0];
                     var dataElement = element[elementId];
 
-                    // console.log({
-                    //     dataElement : dataElement,
-                    //     arraySearchField : arraySearchField
-                    // });
                     for (var i = 0; i < arraySearchField.length; i++) {
                         var field = arraySearchField[i];
                         var fieldValue = Fn._getObjByArrayProp(dataElement, field.data, "");
@@ -282,16 +451,6 @@ var _Field;
                         if (caseInsensitive) {
                             fieldValue = fieldValue.toLowerCase();
                         }
-
-                        // console.log({
-                        //     field : field,
-                        //     index : i,
-                        //     fieldValue : fieldValue,
-                        //     fieldOption : fieldOption,
-                        //     render : render,
-                        //     searchValue : searchValue
-                        //
-                        // });
                         if (fieldValue.includes(searchValue)) {
                             return true;
                         }
@@ -323,18 +482,17 @@ var _Field;
          * Public property
          */
 
-        that.productTemplate = Productify.template.product;
+        that.productTemplate = Productify.defaults.template.product;
 
-        if (Fn._isStringNotEmpty(settings.templateSelector)) {
-            var $template = $(settings.templateSelector);
+        if (Fn._isStringNotEmpty(settings.template)) {
+            var $template = $(settings.template);
             if ($template.length) {
-                that.productTemplate = $template.html();
+                that.productTemplate = $template[0].outerHTML;
                 $template.remove();
             }
         }
 
 
-        Productify.event.init(that);
 
         /**
          * END Public property
@@ -346,11 +504,11 @@ var _Field;
          */
 
         that.data = function () {
-            return productsData;
+            return _productsData;
         };
 
         that.option = function () {
-            return productsOptions;
+            return _options;
         };
 
         that.fields = function () {
@@ -375,7 +533,7 @@ var _Field;
         };
 
         that.cart = function () {
-            return productsCart;
+            return _productsCart;
         };
 
         that.product = function (productId) {
@@ -400,73 +558,73 @@ var _Field;
         };
 
         that.addToCart = function (product, qty) {
-            Productify.event.onAddProduct(that, product);
-            if (Productify.defaults.debug) {
-                console.log("productify.addToCart(product, qty) called", {product: product, qty: qty});
-            }
+            settings.event.onAddProduct(that, product);
+            if (Productify.defaults.debug ) {console.log("productify.addToCart(product, qty) called", {
+                product: product, qty: qty
+            })}
 
             qty = Fn._isSameType(qty, 1) && qty > 0 ? qty : 1;
-            updateCart(product, qty);
+            addToCart(product, qty);
             return that;
         };
 
-        that.removeFromCart = function (product, qty) {
-            if (Productify.defaults.debug) {
-                console.log("productify.removeFromCart(product, qty) called", {product: product, qty: qty});
+        that.removeFromCart = function (index) {
+            if (Productify.defaults.debug ) {
+                console.log("productify.removeFromCart(product, qty) called", {index: index});
             }
-            Productify.event.onRemoveProduct(that, product);
-
-            qty = Fn._isSameType(qty, 1) ? -Math.abs(qty) : 0;
-
-            updateCart(product, qty);
-
+            if (index >= 0 && index < _productsCart.length) {
+                _productsCart.splice(index, 1);
+                updateSession();
+            }
             return that;
         };
 
         that.emptyCart = function () {
             if (Productify.defaults.debug) {
-                console.log("productify.removeFromCart(product, qty) called");
+                console.log("productify.emptyCart(product, qty) called");
             }
-            Productify.event.onEmptyProduct(that);
-            productsCart = {};
+            settings.event.onEmptyProduct(that);
+            _productsCart = [];
             updateSession();
-            fnProductify.cart._updateCartTotal(that);
 
             return that;
         };
 
         that.cartTotal = function () {
-            var arrayCartItems = that.cart();
+            var arrayCartItems = _productsCart;
             var total = 0;
-            $.each(arrayCartItems, function (index, element) {
+            $.each(arrayCartItems, function (index, cartItem) {
                 var priceSrc = Fn._getObjByProp(that.settings, indexes.priceSrc, '');
-                var productQty = Fn._getObjByProp(element, indexes.fieldOptions._qty, -1);
-                var productPrice = Fn._getObjByProp(element, priceSrc, -1);
-                if (productPrice && productQty) {
-                    total += (productPrice * productQty);
+                var productQty = Fn._getObjByProp(cartItem, indexes.fieldOptions._qty, -1);
+                var productPrice = Fn._getObjByProp(cartItem, priceSrc, 0);
+                var productExtraTotal = Fn._getObjByProp(cartItem, _oIndexes._extraOptionsTotal, 0);
+                productExtraTotal = Fn._isNumeric(productExtraTotal) ? parseInt(productExtraTotal) : 0;
+                var  totalPrice = productPrice + productExtraTotal;
+
+                if (totalPrice && productQty) {
+                    total += cartItem[indexes._cartElementTotal];
                 }
             });
             return total;
         };
 
         that.draw = function () {
-            Productify.event.onDraw(that);
+            settings.event.onDraw(that);
 
             fnProductify.product._drawProducts(that, settings, _displayProductsData);
 
-            fnProductify.cart._updateCartTotal(that);
             Productify.listener.addProductBtn(that);
 
             return that;
         };
 
         that.init = function () {
-            Productify.event.preInit(that);
+            settings.event.preInit(that);
             var
                 url = settings.ajax,
                 dataSrc = settings.dataSrc
             ;
-            Productify.event.onInit(that);
+            settings.event.onInit(that);
             if (
                 Fn._isStringNotEmpty(url) && Fn._isStringNotEmpty(dataSrc)
             ) {
@@ -483,19 +641,19 @@ var _Field;
                     setOption(response.options);
                     loadSessionCart();
                     that.sort();
-                    Productify.event.initDraw(that);
-                    Productify.event.preDraw(that);
+                    settings.event.initDraw(that);
+                    settings.event.preDraw(that);
                     fnProductify.controls._drawControl(that, settings);
                     fnProductify.fieldsGroup._loadFieldsGroup(that, settings);
                     that.draw();
 
-                    Productify.event.postDraw(that);
+                    settings.event.postDraw(that);
 
                     Productify.initListener(that);
                 });
             }
 
-            Productify.event.postInit(that);
+            settings.event.postInit(that);
             return that;
         };
 
@@ -515,7 +673,7 @@ var _Field;
         that.filter = function () {
             var debug = {
                 _event: "DataCard API filter() called",
-                productsData: productsData,
+                productsData: _productsData,
                 arguments: arguments
             };
 
@@ -527,13 +685,13 @@ var _Field;
                 var search = arguments[0];
                 if (Fn._isSameType(search, "")) {
                     console.log({
-                        search: search, jsonData: productsData
+                        search: search, jsonData: _productsData
                     });
-                    _displayProductsData = generalSearch(productsData, search);
+                    _displayProductsData = generalSearch(_productsData, search);
                 }
                 else if (Fn._isSameType(search, {}) && !$.isEmptyObject(search)) {
                     var genSearch = Fn._getObjByProp(search, indexes.search, "");
-                    _displayProductsData = generalSearch(productsData, genSearch);
+                    _displayProductsData = generalSearch(_productsData, genSearch);
 
 
                     /**
@@ -586,7 +744,7 @@ var _Field;
                             var isDataFounded = false;
                             productData = productData[Object.keys(productData)[0]];
 
-                            for (var i_not = 0; i_not < fieldsNotContainName.length; i_not++) {
+                            for (var i_not = 0; i_not < fieldsNotContainName.length; i_not ++) {
                                 var fieldNameNot = fieldsNotContainName[i_not];
                                 var fieldSearchValuesNot = searchFieldsNotContain[fieldNameNot];
                                 var fieldNot = that.field(fieldNameNot);
@@ -619,12 +777,12 @@ var _Field;
                             _event: "DataCard API filter() called",
                             search: search,
                             _displayData: _displayProductsData,
-                            jsonData: productsData,
+                            jsonData: _productsData,
                             fields: searchFieldsContain
                         });
                     }
                 } else {
-                    _displayProductsData = productsData.slice();
+                    _displayProductsData = _productsData.slice();
                 }
 
 
@@ -632,7 +790,7 @@ var _Field;
                 debug.processTime = processTime;
                 debug._displayData = _displayProductsData;
                 debug.search = search;
-                debug.jsonData = productsData;
+                debug.jsonData = _productsData;
                 debug._lastSearchValue = _lastSearchValue;
 
                 if (Productify.defaults.debug) {
@@ -642,162 +800,81 @@ var _Field;
             return that;
         };
 
+        that.optionizer = function (product, qty) {
+            $.fn.productify.optionizer(that, product, qty);
+        };
+
+
+        that.node = function (productId) {
+            return fnProductify.product._getNode(that, productId);
+        };
+
         /**
          * END Public functions
          */
+        settings.event.init(that);
         that.init();
         return that;
     };
 
 
+    /**
+     * $.fn.productify.defaults
+     * @var {Object} defaults defaults options
+     * @augments Productify
+     * @property {string} currency
+     * @property {boolean} debug
+     * @property {Object} options
+     * @property {Object} field
+     * @property {Object} fieldsGroup
+     * @property {Object} animation
+     */
     Productify.defaults = {
-        /**  */
         currency: '€',
-        /**  */
         debug: false,
-        /**  */
         options: {},
-        /**  */
+        event : {},
         field: {},
-        /**  */
         fieldsGroup: {},
-        /**  */
         animation: {
             bounceIn: 'bounceIn',
             bounceOut: "bounceOut"
-        }
-    };
-
-    /**
-     *
-     * @type {{ajax: string, merchantId, lang, dataSrc: string, idSrc: string, sessionUrl: string, priceSrc: string, order: string, controlSelector: string, fieldsGroup: {idSrc: string, options: string, data: string, title: string, titleSelector: string, template: string, containerSelector: string, _valid: boolean}, search: boolean, fields: Array, image: boolean, addBtnSelector: string, qtySelector: string, removeBtnSelector: string, cartSelector: string, templateSelector: string}}
-     */
-    Productify.defaults.options = {
-        /** url where the data should query */
-        ajax: _apiSrc,
-        /** merchant id is sent through ajax to retrieve the product from that merchant */
-        merchantId: merchantId(),
-        /** language of the query */
-        lang: lang,
-        /** source of the query */
-        dataSrc: 'product',
-        /** data's property to get the id */
-        idSrc: 'idCode',
-        /** url where the cart's operation should send */
-        sessionUrl: _apiSrc,
-        /** data's property to get the price */
-        priceSrc: 'price',
-        //TODO
-        order: 'categoryIdCode',
-        /** DOM selector to display filter's control */
-        controlSelector: '',
-        fieldsGroup: {
-            /**  */
-            idSrc: '',
-            /**  */
-            options: '',
-            /**  */
-            data: '',
-            /**  */
-            title: '',
-            /**  */
-            titleSelector: '',
-            /**  */
-            template: '',
-            /**  */
-            containerSelector: '',
-            /**  */
-            _valid: false
         },
-        /** define if process general search or not and draw the search input */
-        search: true,
-        /** all fields of productify */
-        fields: [],
-        //TODO
-        image: false,
-        /**  */
-        addBtnSelector: '',
-        /**  */
-        qtySelector: '',
-        /**  */
-        removeBtnSelector: '',
-        /**  */
-        cartSelector: '',
-        /**  */
-        templateSelector: ''
+        template : {}
     };
 
-    Productify.defaults.field.options = {
-        /**  */
-        data: '',
-        /**  */
-        title: '',
-        /**  */
-        type: _Productify._fieldType.text,
-        /**  */
-        searchable: true,
-        /**  */
-        filter: true,
-        /**  */
-        filterContain: true,
-        /**  */
-        render: null,
-        /**  */
-        options: null
-    };
-
-
-    Productify.render = {
-        price: _Field.render.price,
-        image: function (fieldValue, rowData, field, options) {
-            if (Fn._isStringNotEmpty(fieldValue)) {
-                // fieldValue = "/yichan.jpg";
-                return '<div class="product-image"><img src="' + fieldValue + '" class="img-fluid"></div>';
-            }
-            else {
-                // return '<div class="product-image"><img src="/yichan.jpg" class="img-fluid"></div>';
-            }
-        },
-        allergen: function (fieldValue, rowData, field, options) {
-            var allergenRender = "";
-            if (options !== null) {
-                $.each(fieldValue, function (index, allergenId) {
-                    if (Fn._isStringNotEmpty(allergenId)) {
-                        var allergen = options.find(function (element) {
-                            var elementId = Object.keys(element)[0];
-                            console.log({
-                                element: element,
-                                allergenId: allergenId,
-                                elementId: elementId
-                            });
-                            return Object.keys(element)[0] === allergenId;
-                        });
-                        console.log({
-                            allergen: allergen
-                        });
-                        if (Fn._isSameType(allergen, {})) {
-                            allergen = allergen[Object.keys(allergen)[0]];
-
-                            var allergenName = Fn._getObjByProp(allergen, "name", "");
-                            console.log({
-                                allergen: allergen
-                            });
-                            if (Fn._isStringNotEmpty(allergenName)) {
-                                allergenRender +=
-                                    '<span class="badge badge-pill badge-secondary allergen">' + allergenName + '</span>';
-                            }
-                        }
-                    }
-                });
-            }
-            console.log({
-                name: allergenRender
-            });
-            return allergenRender;
-        }
-    };
-
-    Productify.template = {
+    Productify.defaults.template = {
+        /**
+         * $.fn.productify.defaults.template.product
+         * @var {string} productTemplate defaults template for product
+         * @augments template
+         * @example
+         * <div class="product-item elevation dp-product">
+         *     {imageWebPath}
+         *     <div class="product-all-details">
+         *         <div class="visible-details">
+         *             <div class="product-details">
+         *                 <p class="product-name primary text-xs">{name}</p>
+         *                 <p class="product-desc text-xxs">{description}</p>
+         *                 <div class="product-allergen">
+         *                     <p class="text-accent text-xxs m-b-5">allergènes</p>
+         *                     <div>{allergen}</div>
+         *                     <div>{productOptions}</div>
+         *                 </div>
+         *             </div>
+         *             <div class="product-extra">
+         *                 <div class="price">
+         *                     <div class="cart">
+         *                         <div class="product-price text-accent">{price}</div>
+         *                         <input type="number" placeholder="1" value="1" min="1" class="qty-input form-control">
+         *                         <button class="product-add btn dp-add-btn" data-dp-id={idCode}><i class="fas fa-cart-plus"></i></button>
+         *                     </div>
+         *                 </div>
+         *             </div>
+         *         </div>
+         *     </div>
+         * </div>
+         */
         product:
         '<div class="product-item elevation dp-product">' +
         // '<div class="product-image">{imageWebPath}</div>' +
@@ -807,8 +884,8 @@ var _Field;
         '<div class="visible-details">' +
         '<div class="product-details">' +
         // '<p class="product-name text-xxxs text-accent">{categoryIdCode}</p>' +
-        '<p class="product-name primary text-xs">{name}</p>' +
-        '<p class="product-desc text-xxs">{description}</p>' +
+        '<p class="product-name primary text-sm">{name}</p>' +
+        '<p class="product-desc text-xs">{description}</p>' +
         '<div class="product-allergen">' +
         '<p class="text-accent text-xxs m-b-5">allergènes</p>' +
         '<div>' +
@@ -869,18 +946,322 @@ var _Field;
         '</div>' +
         '</div>' +
         '</div>'*/,
+
+        /**
+         * $.fn.productify.defaults.template.cartElement
+         * @var {string} cartElementTemplate defaults template for product
+         * @augments template
+         * @example
+         * <div class="cart-item">
+         *     <div class="cart-product-meta">
+         *         <div class="primary">{name}</div>
+         *         <span class="text-accent m-l-10">{qty}</span> x
+         *         <span class="text-accent">{price}</span>
+         *     </div>
+         *     <div class="cart-item-remove">
+         *         <a href="#" class="cart-item-remove"><i class="fa fa-times  text-danger"></i></a>
+         *     </div>
+         * </div>'
+         */
         cartElement:
         '<div class="cart-item">' +
-        '<div class="cart-product-meta">' +
-        '<div class="primary">{name}</div>' +
-        '<span class="text-accent m-l-10">{qty}</span>' + " x " +
-        '<span class="text-accent">{price}</span>' +
-        '</div>' +
-        '<div class="cart-item-remove">' +
-        '<a href="#" class="cart-item-remove"><i class="fa fa-times  text-danger"></i></a>' +
-        '</div>' +
+            '<div class="cart-product-meta">' +
+                '<div class="primary">{name}<span class="text-accent m-l-10 text-xxs">x {qty}</span></div>' +
+                '<div class="text-accent text-xxs">{price}</div>' +
+                '<div id="dp-optionizer" class="text-xxxs"></div>'+
+                '<div class="text-accent text-xs">{total}</div>' +
+            '</div>' +
+            '<div class="cart-item-remove">' +
+                '<a href="#" class="btn-item-remove"><i class="fa fa-times  text-danger"></i></a>' +
+            '</div>' +
+            '<div class="separator m-0"></div>' +
         '</div>'
     };
+
+    Productify.event = {
+        debug: false,
+        init: function (productify) {
+            if (Productify.event.debug) {
+                console.log('init(productify) called', {productify: productify});
+            }
+
+        },
+        preInit: function (productify) {
+            if (Productify.event.debug) {
+                console.log('preInit(productify) called', {productify: productify});
+            }
+            return true;
+        },
+        onInit: function (productify) {
+            if (Productify.event.debug) {
+                console.log('onInit(productify) called', {productify: productify});
+            }
+
+        },
+        postInit: function (productify) {
+            if (Productify.event.debug) {
+                console.log('postInit(productify) called', {productify: productify});
+            }
+        },
+        initDraw: function (productify) {
+            if (Productify.event.debug) {
+                console.log('initDraw(productify) called', {productify: productify});
+            }
+
+        },
+        preDraw: function (productify) {
+            if (Productify.event.debug) {
+                console.log('preDraw(productify) called', {productify: productify});
+            }
+            return true;
+
+        },
+        onDraw: function (productify) {
+            if (Productify.event.debug) {
+                console.log('onDraw(productify) called', {productify: productify});
+            }
+
+        },
+        postDraw: function (productify) {
+            if (Productify.event.debug) {
+                console.log('postDraw(productify) called', {productify: productify});
+            }
+
+            INSPIRO.header.mainMenu();
+            INSPIRO.elements.magnificPopup();
+
+        },
+        initAddProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('initAddProduct(productify) called', {productify: productify});
+            }
+
+        },
+        preAddProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('preAddProduct(productify, product) called', {productify: productify, product: product});
+            }
+            return true;
+
+        },
+        onAddProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('onAddProduct(productify, product) called', {productify: productify, product: product});
+            }
+
+
+        },
+        postAddProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('postAddProduct(productify, product) called', {productify: productify, product: product});
+            }
+
+        },
+        initRemoveProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('initRemoveProduct(productify) called', {productify: productify});
+            }
+
+        },
+        preRemoveProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('preRemoveProduct(productify, product) called', {productify: productify, product: product});
+            }
+            return true;
+
+        },
+        onRemoveProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('onRemoveProduct(productify, product) called', {productify: productify, product: product});
+            }
+
+        },
+        postRemoveProduct: function (productify, product) {
+            if (Productify.event.debug) {
+                console.log('postRemoveProduct(productify, product) called', {
+                    productify: productify,
+                    product: product
+                });
+            }
+
+        },
+        initEmptyProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('initEmptyProduct(productify) called', {productify: productify});
+            }
+
+        },
+        preEmptyProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('preEmptyProduct(productify, product) called', {productify: productify});
+            }
+            return true;
+
+        },
+        onEmptyProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('onEmptyProduct(productify, product) called', {productify: productify});
+            }
+
+        },
+        postEmptyProduct: function (productify) {
+            if (Productify.event.debug) {
+                console.log('postEmptyProduct(productify, product) called', {productify: productify});
+            }
+
+        },
+        onUpdateCart: function (productify) {
+            if (Productify.event.debug) {
+                console.log('onUpdateCart(productify) called', {productify: productify});
+            }
+
+        },
+        postUpdateCart: function (productify) {
+            if (Productify.event.debug) {
+                console.log('postUpdateCart(productify) called', {productify: productify});
+            }
+            var $cartQty = $("#badge-qty");
+            var length = Fn._getObjectLength(productify.cart());
+            $cartQty.text(length);
+        }
+
+    };
+
+
+    /**
+     * $.fn.productify.defaults.fieldsGroup
+     * @var {Object} fieldsGroupOptions defaults options
+     * @augments defaults
+     *
+     * @property {boolean} [_valid = false]
+     * @property {string} containerSelector
+     * @property {string} data
+     * @property {string} idSrc
+     * @property {string} options
+     * @property {string} template
+     * @property {string} [title = '']
+     * @property {string} [titleSelector = '']
+     */
+    Productify.defaults.fieldsGroup = {
+        _valid: false,
+        containerSelector: '',
+        data: '',
+        idSrc: '',
+        options: '',
+        template: '',
+        title: '',
+        titleSelector: ''
+    };
+
+    /**
+     * $.fn.productify.defaults.options
+     * @augments defaults
+     * @var {Object} productifyOptions
+     * @property {string} [addBtnSelector]
+     * @property {string} [ajax = '/_api/_eshop/'] the url where to query products
+     * @property {string} [cartSelector] this define the cart's container to add element in
+     * @property {string} [controlSelector] DOM selector to display filter's control
+     * @property {string} [dataSrc = 'product'] source of the query
+     * @property {Array<fields>} fields all fields of productify
+     * @property {fieldsGroupOptions} [fieldsGroup = fieldsGroupOptions] defaults fields  group options
+     * @property {string} [idSrc = 'idCode'] data's property to get the id
+     * @property {boolean} [image = false]
+     * @property {string} [lang = Fn._getLang()] language is sent with ajax data to retrieve elements with the appropriate language
+     * @property {string} [merchantId = merchantId()] Merchant's id is sent with ajax data to retrieve the product from that merchant
+     * @property {string} [priceSrc = 'price'] data's property to get the price
+     * @property {string} [qtySelector] DOM selector for input type number to define the quantity when add button is clicked
+     * @property {string} [removeBtnSelector]
+     * @property {boolean} [search = true] define if process general search or not and draw the search input
+     * @property {string} [sessionUrl = '/_api/_eshop/'] url where the cart's operation should send
+     * @property {jquerySelector|html} [template] the product's template, can be html string or a jquerySelector
+     * @property {null|productOptions} [productOptions = null] the product's template, can be html string or a jquerySelector
+     *
+     */
+    Productify.defaults.options = {
+        addBtnSelector: '',
+        ajax: _apiSrc,
+        cartSelector: '',
+        controlSelector: '',
+        dataSrc: 'product',
+        event : Productify.event,
+        fields: [],
+        fieldsGroup: Productify.defaults.fieldsGroup,
+        idSrc: 'idCode',
+        image: false,
+        lang: Fn._getLang(),
+        merchantId: merchantId(),
+        priceSrc: 'price',
+        qtySelector: '',
+        removeBtnSelector: '',
+        search: true,
+        sessionUrl: _apiSrc,
+        template: Productify.defaults.template.product,
+        optionizer : {}
+    };
+
+    /**
+     * $.fn.productify.defaults.field
+     * @augments defaults
+     * @var {Object} field default field object
+     * @property {string} [data]
+     * @property {boolean} [filter = true] define if the field should be filter or not with select, radio or checkbox
+     * @property {boolean} [filterContain = true] defile if field filter with logic of contain, if set to false, it will filter with the logic of not contain
+     * @property {null|Array<Object>} [options = null] options for render the field value
+     * @property {boolean} [searchable = true] defile if the field can be search through the input search
+     * @property {string} [title]
+     * @property {string} [type = 'text']
+     *
+     */
+    Productify.defaults.field = {
+        data: '',
+        filter: true,
+        filterContain: true,
+        options: null,
+        render: null,
+        searchable: true,
+        title: '',
+        type: _Productify._fieldType.text
+    };
+
+
+
+    Productify.render = {
+        price: _Field.render.price,
+        image: function (fieldValue, rowData, field, options) {
+            if (Fn._isStringNotEmpty(fieldValue)) {
+                // fieldValue = "/yichan.jpg";
+                return '<div class="product-image"><img src="' + fieldValue + '" class="img-fluid"></div>';
+            }
+            else {
+                // return '<div class="product-image"><img src="/yichan.jpg" class="img-fluid"></div>';
+            }
+            return null;
+        },
+        allergen: function (fieldValue, rowData, field, options) {
+            var allergenRender = "";
+            if (options !== null) {
+                $.each(fieldValue, function (index, allergenId) {
+                    if (Fn._isStringNotEmpty(allergenId)) {
+                        var allergen = options.find(function (element) {
+                            var elementId = Object.keys(element)[0];
+                            return elementId === allergenId;
+                        });
+                        if (Fn._isSameType(allergen, {})) {
+                            allergen = allergen[Object.keys(allergen)[0]];
+
+                            var allergenName = Fn._getObjByProp(allergen, "name", "");
+                            if (Fn._isStringNotEmpty(allergenName)) {
+                                allergenRender +=
+                                    '<span class="badge badge-pill badge-secondary allergen text-xxxs">' + allergenName + '</span>';
+                            }
+                        }
+                    }
+                });
+            }
+            return allergenRender;
+        }
+    };
+
 
     var models = Productify.models = {
         selectedAttr: "selected",
@@ -975,34 +1356,38 @@ var _Field;
             title: 'title',
             containerSelector: 'containerSelector',
             _valid: "_valid"
-        }
+        },
+        optionizer : "optionizer",
+        render : "render",
+        _cartElementTotal : "_cartElementTotal"
     };
 
     Productify.listener = {
         addProductBtn: function (productify) {
             var $btn = $('.' + models.addBtn.attr.class);
             $btn
-                .unbind('click')
-                .bind('click', function (event) {
-                    Productify.event.initAddProduct(productify);
+                .off('click')
+                .on('click', function (event) {
+                    var debug = false;
+                    productify.settings.event.initAddProduct(productify);
                     var qtySelector = Fn._getObjByArrayProp(productify, ['settings', 'qtySelector']);
                     event.stopPropagation();
                     var $btn = $(this);
                     var $productElement = $btn.closest('.' + models.product.attr.class);
-                    var inputVal = 1;
+                    var qty = 1;
                     var $input = null;
                     if ($productElement.length && Fn._isStringNotEmpty(qtySelector)) {
                         $input = $(qtySelector, $productElement);
                         if ($input.length && Fn._isSameType(parseInt($input.val()), 1)) {
-                            inputVal = parseInt($input.val());
+                            qty = parseInt($input.val());
                         }
                     }
 
-                    if (Productify.defaults.debug) {
+                    if (Productify.defaults.debug || debug) {
                         console.log({
                             productify: productify,
                             qtySelector: qtySelector,
-                            inputVal: inputVal
+                            inputVal: qty
                         })
                     }
                     var itemId = $btn.attr(models.dataIdAttr);
@@ -1010,14 +1395,21 @@ var _Field;
                     itemId = (itemId);
                     if (itemId) {
                         var product = productify.product(itemId);
-                        if (Fn._isSameType(product, {})) {
+                        if (Fn._isObject(product)) {
 
-                            Productify.event.preAddProduct(productify, product);
-                            productify.addToCart(product, inputVal);
-                            Productify.event.postAddProduct(productify, product);
-                            Animation._animate($btn, Productify.defaults.animation.bounceIn);
-                            if ($input.length) {
-                                $input.val(1);
+                            var preAdd = productify.settings.event.preAddProduct(productify, product, qty);
+                            if (Productify.defaults.debug || debug) {
+                                console.log({
+                                    preAdd : preAdd, product : product
+                                })
+                            }
+                            if(preAdd !== false){
+                                productify.addToCart(product, qty);
+                                Productify.event.postAddProduct(productify, product);
+                                Animation._animate($btn, Productify.defaults.animation.bounceIn);
+                                if ($input.length) {
+                                    $input.val(1);
+                                }
                             }
                         }
                     }
@@ -1025,11 +1417,11 @@ var _Field;
             ;
         },
         removeProductBtn: function (productify) {
-            Productify.event.initRemoveProduct(productify);
+            productify.settings.event.initRemoveProduct(productify);
             var $btn = $('.' + models.removeBtn.attr.class);
             $btn
-                .unbind('click')
-                .bind('click', function (event) {
+                .off('click')
+                .on('click', function (event) {
 
                     if (Productify.defaults.debug) {
                         console.log('removeProductBtn clicked');
@@ -1037,27 +1429,19 @@ var _Field;
                     event.preventDefault();
                     event.stopPropagation();
                     var $btnElement = $(this);
-                    var itemId = ($btnElement.attr(models.dataIdAttr));
-                    if (itemId) {
-                        var $element = $btnElement.closest('.' + models.cartItem.attr.class);
 
-                        var product = productify.product(itemId);
-                        if (Fn._isSameType(product, {})) {
-                            Productify.event.preRemoveProduct(productify, product);
-                            productify.removeFromCart(product);
-                            Productify.event.postRemoveProduct(productify, product);
-                            $element.detach();
-                        }
-                    }
+                    productify.settings.event.preRemoveProduct(productify);
+                    productify.removeFromCart($btn.index($btnElement));
+                    productify.settings.event.postRemoveProduct(productify);
                 })
             ;
         },
         emptyCartBtn: function (productify) {
-            Productify.event.initRemoveProduct(productify);
+            productify.settings.event.initRemoveProduct(productify);
             var $btn = $('.' + models.emptyBtn.attr.class);
             $btn
-                .unbind('click')
-                .bind('click', function (event) {
+                .off('click')
+                .on('click', function (event) {
 
                     if (Productify.defaults.debug) {
                         console.log('removeProductBtn clicked');
@@ -1070,11 +1454,11 @@ var _Field;
             ;
         },
         checkOut: function (productify) {
-            Productify.event.initRemoveProduct(productify);
+            productify.settings.event.initRemoveProduct(productify);
             var $btn = $('.checkout');
             $btn
-                .unbind('click')
-                .bind('click', function (event) {
+                .off('click')
+                .on('click', function (event) {
 
                     if (Productify.defaults.debug) {
                         console.log('checkOut clicked');
@@ -1098,8 +1482,8 @@ var _Field;
             var controlSelector = Fn._getObjByProp(productify.settings, indexes.controlSelector, "");
             if (Fn._isStringNotEmpty(controlSelector)) {
                 $('#' + models.controls.inputSearch.attr.id)
-                    .unbind('keyup')
-                    .bind("keyup", function () {
+                    .off('keyup')
+                    .on("keyup", function () {
                         fnProductify.field._fieldsFilter(productify);
                     })
                 ;
@@ -1127,18 +1511,18 @@ var _Field;
                             });
                         }
                         if (inputType === "checkbox" || inputType === 'radio') {
-                            $this.unbind('change').bind('change', function () {
+                            $this.off('change').on('change', function () {
 
                                 fnProductify.field._fieldsFilter(productify);
                             });
                         } else {
 
-                            $this.unbind('keyup').bind("keyup", function () {
+                            $this.off('keyup').on("keyup", function () {
                                 fnProductify.field._fieldsFilter(productify);
                             });
                         }
                     } else if (tagName === "select") {
-                        $this.bind("change", function () {
+                        $this.on("change", function () {
                             var selectedVal = $this.val();
                             $('option', $this).removeAttr(models.selectedAttr);
                             $('option[value="' + selectedVal + '"]', $this).attr(models.selectedAttr, models.selectedAttr);
@@ -1156,150 +1540,7 @@ var _Field;
             if (Fn._isFunction(listener)) {
                 listener(productify);
             }
-        })
-    };
-
-    Productify.event = {
-        debug: false,
-        init: function (productify) {
-            if (Productify.event.debug) {
-                console.log('init(productify) called', {productify: productify});
-            }
-
-        },
-        preInit: function (productify) {
-            if (Productify.event.debug) {
-                console.log('preInit(productify) called', {productify: productify});
-            }
-        },
-        onInit: function (productify) {
-            if (Productify.event.debug) {
-                console.log('onInit(productify) called', {productify: productify});
-            }
-
-        },
-        postInit: function (productify) {
-            if (Productify.event.debug) {
-                console.log('postInit(productify) called', {productify: productify});
-            }
-        },
-        initDraw: function (productify) {
-            if (Productify.event.debug) {
-                console.log('initDraw(productify) called', {productify: productify});
-            }
-
-        },
-        preDraw: function (productify) {
-            if (Productify.event.debug) {
-                console.log('preDraw(productify) called', {productify: productify});
-            }
-
-        },
-        onDraw: function (productify) {
-            if (Productify.event.debug) {
-                console.log('onDraw(productify) called', {productify: productify});
-            }
-
-        },
-        postDraw: function (productify) {
-            if (Productify.event.debug) {
-                console.log('postDraw(productify) called', {productify: productify});
-            }
-
-            INSPIRO.header.mainMenu();
-            INSPIRO.elements.magnificPopup();
-
-        },
-        initAddProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('initAddProduct(productify) called', {productify: productify});
-            }
-
-        },
-        preAddProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('preAddProduct(productify, product) called', {productify: productify, product: product});
-            }
-
-        },
-        onAddProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('onAddProduct(productify, product) called', {productify: productify, product: product});
-            }
-
-        },
-        postAddProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('postAddProduct(productify, product) called', {productify: productify, product: product});
-            }
-
-        },
-        initRemoveProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('initRemoveProduct(productify) called', {productify: productify});
-            }
-
-        },
-        preRemoveProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('preRemoveProduct(productify, product) called', {productify: productify, product: product});
-            }
-
-        },
-        onRemoveProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('onRemoveProduct(productify, product) called', {productify: productify, product: product});
-            }
-
-        },
-        postRemoveProduct: function (productify, product) {
-            if (Productify.event.debug) {
-                console.log('postRemoveProduct(productify, product) called', {
-                    productify: productify,
-                    product: product
-                });
-            }
-
-        },
-        initEmptyProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('initEmptyProduct(productify) called', {productify: productify});
-            }
-
-        },
-        preEmptyProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('preEmptyProduct(productify, product) called', {productify: productify});
-            }
-
-        },
-        onEmptyProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('onEmptyProduct(productify, product) called', {productify: productify});
-            }
-
-        },
-        postEmptyProduct: function (productify) {
-            if (Productify.event.debug) {
-                console.log('postEmptyProduct(productify, product) called', {productify: productify});
-            }
-
-        },
-        onUpdateCart: function (productify) {
-            if (Productify.event.debug) {
-                console.log('onUpdateCart(productify) called', {productify: productify});
-            }
-
-        },
-        postUpdateCart: function (productify) {
-            if (Productify.event.debug) {
-                console.log('postUpdateCart(productify) called', {productify: productify});
-            }
-            var $cartQty = $("#badge-qty");
-            var length = Fn._getObjectLength(productify.cart());
-            $cartQty.text(length);
-        }
-
+        });
     };
 
     var fnProductify = Productify.fn = {
@@ -1407,33 +1648,53 @@ var _Field;
                 }
                 return $productItem;
 
+            },
+            _getNode : function (productify, productId) {
+                if(Fn._isNotUndefined(productify) && Fn._isStringNotEmpty(productId)){
+                    var $node = $('.'+models.product.attr.class+"["+models.dataIdAttr+"='"+productId+"']");
+                    if($node.length){
+                        return $node;
+                    }
+                }
+                return null;
             }
         },
         cart: {
-            _createCartRow: function (productify, data) {
+            _emptyCart : function (productify) {
+                var cartSelector = Fn._getObjByProp(productify.settings, indexes.cartSelector, '');
+                if (Fn._isStringNotEmpty(cartSelector)){
+                    var $cartItems = $(cartSelector);
+                    if($cartItems.length){
+                        $cartItems.empty();
+                    }
+                }
+
+            },
+            _createCartRow: function (productify, product) {
                 var idSrc = Fn._getObjByProp(productify.settings, indexes.idSrc, "");
                 var removeBtnSelector = Fn._getObjByProp(productify.settings, indexes.removeBtnSelector, '');
                 var $cartItem = null;
                 var arrayFields = Fn._getObjByProp(productify.settings, indexes.fields, []);
-                var template = Productify.template.cartElement;
+                var template = Productify.defaults.template.cartElement;
 
-                if (Fn._isSameType(data, {}) && Fn._isStringNotEmpty(template) && arrayFields.length) {
-                    var id = Fn._getObjByProp(data, idSrc, -1);
+                if (Fn._isSameType(product, {}) && Fn._isStringNotEmpty(template) && arrayFields.length) {
+                    var id = Fn._getObjByProp(product, idSrc, -1);
                     if (id) {
                         $.each(arrayFields, function (index, field) {
                             var dataSrc = Fn._getObjByProp(field, indexes.fieldOptions.data, '');
                             var fieldOption = Fn._getObjByProp(field, indexes.fieldOptions.options, null);
                             if (Fn._isStringNotEmpty(dataSrc)) {
-                                var fieldValue = data.hasOwnProperty(field.data) ? data[field.data] : "";
+                                var fieldValue = product.hasOwnProperty(field.data) ? product[field.data] : "";
                                 var render = Fn._getObjByProp(field, indexes.fieldOptions.render, null);
                                 if (Fn._isFunction(render)) {
-                                    fieldValue = render(fieldValue, data, field, fieldOption);
+                                    fieldValue = render(fieldValue, product, field, fieldOption);
                                 }
                                 template = template.replace('{' + dataSrc + '}', fieldValue);
                             }
 
                         });
-                        template = template.replace('{' + indexes.fieldOptions._qty + '}', data[indexes.fieldOptions._qty]);
+                        template = template.replace('{' + indexes.fieldOptions._qty + '}', product[indexes.fieldOptions._qty]);
+                        template = template.replace('{total}', Fn._intToPrice( product[indexes._cartElementTotal]));
                         $cartItem = $(template);
 
                         if (Fn._isStringNotEmpty(removeBtnSelector)) {
@@ -1442,6 +1703,8 @@ var _Field;
                             $removeBtn.addClass(models.removeBtn.attr.class);
                         }
                         $cartItem.addClass(models.cartItem.attr.class);
+                        var $optionizerRender = fnProductify.cart._createCartOptionizer(productify, product);
+                        $("#dp-optionizer", $cartItem).html($optionizerRender);
 
                         $cartItem.attr(models.dataIdAttr, id);
 
@@ -1450,24 +1713,30 @@ var _Field;
                 }
                 return $cartItem;
             },
-            _addElementToCart: function (productify, product) {
+            _createCartOptionizer : function (productify, product) {
+                var optionizer = Fn._getObjByProp(productify.settings, indexes.optionizer, {});
+                var optionizerRender = Fn._getObjByProp(optionizer, indexes.render, null );
+                console.log({
+                    optionizer: optionizer
+                });
+                if(Fn._isFunction(optionizerRender)){
+                    var arrayOptions = Fn._getObjByProp(product, _oIndexes._extraOptions, []);
+                    return optionizerRender(product, arrayOptions);
+                }
+                return null;
+
+            },
+            _addElementToCart: function (productify, cartElement) {
                 var cartSelector = Fn._getObjByProp(productify.settings, indexes.cartSelector, '');
                 var idSrc = Fn._getObjByProp(productify.settings, indexes.idSrc, "");
-                var productId = Fn._isStringNotEmpty(idSrc) ? Fn._getObjByProp(product, idSrc, -1) : product[idSrc];
+                var productId = Fn._isStringNotEmpty(idSrc) ? Fn._getObjByProp(cartElement, idSrc, null) : cartElement[idSrc];
                 if (
-                    Fn._isStringNotEmpty(cartSelector) &&
-                    Fn._isSameType(product, {}) && productId
+                    Fn._isStringNotEmpty(cartSelector) && productId && ! $.isEmptyObject(cartElement)
                 ) {
                     var $cartItems = $(cartSelector);
-                    var selector = '.' + models.cartItem.attr.class + '[' + models.dataIdAttr + '=' + productId + ']';
-                    var $productElement = fnProductify.cart._createCartRow(productify, product);
-                    var $foundedItem = $(selector, cartSelector);
+                    var $productElement = fnProductify.cart._createCartRow(productify, cartElement);
                     if ($productElement !== null) {
-                        if ($foundedItem.length) {
-                            $foundedItem.replaceWith($productElement);
-                        } else {
-                            $cartItems.append($productElement);
-                        }
+                        $cartItems.append($productElement);
                         Productify.listener.removeProductBtn(productify);
                     }
                 }
@@ -1475,9 +1744,12 @@ var _Field;
             _updateCartTotal: function (productify) {
                 var cartTotal = productify.cartTotal();
                 var cartElements = productify.cart();
+                console.log({
+                    cartElements : cartElements
+                });
                 var $btnCheckout = $('.checkout');
                 var $btnEmpty = $('.' + models.emptyBtn.attr.class);
-                if (Fn._getObjectLength(cartElements) > 0) {
+                if (cartElements.length > 0) {
                     $btnCheckout.removeClass("disabled");
                     FnJquery._disableElem($btnEmpty, false);
                 } else {
@@ -1561,13 +1833,15 @@ var _Field;
              * @private
              */
             _mergeSetting: function (settings) {
+                var defaultOptions = Productify.defaults.options;
+                    defaultOptions[indexes.optionizer] = optionizerDefault.options;
                 var
-                    mergedSettings = $.extend(true, {}, Productify.defaults.options, settings),
+                    mergedSettings = $.extend(true, {}, defaultOptions, settings),
                     arraySettingsFields = mergedSettings.fields
                 ;
                 var arrayFields = [];
                 $.each(arraySettingsFields, function (index, element) {
-                    var field = $.extend({}, Productify.defaults.field.options, element);
+                    var field = $.extend({}, Productify.defaults.field, element);
                     if (!Fn._isFunction(field.render)) {
                         field.render = fnProductify.field._getFieldRender(field.type, field.options);
                     }
@@ -1575,7 +1849,7 @@ var _Field;
                 });
                 mergedSettings.fields = arrayFields;
                 if (fnProductify.debug) {
-                    console.log("_mergeSetting", {arguments: arguments, arrayFields: arrayFields})
+                    console.log("_mergeSetting", {arguments: arguments, arrayFields: arrayFields, options : Productify.defaults.options})
                 }
                 return mergedSettings;
             },
@@ -1607,9 +1881,6 @@ var _Field;
         },
         _fieldsFilter: function (productify) {
             var processTime = Date.now();
-            var settings = productify.settings;
-
-            // TODO var caseInsensitive = Fn._getObjByProp(settings, _prop.caseInsensitive, DataCardDefaults.options.caseInsensitive);
             var debug = {
                 _event: 'fnProductify.field._fieldsFilter',
                 productify: productify
@@ -1753,9 +2024,6 @@ var _Field;
                 }
             }
         },
-        _getListElement: function (productify, settings) {
-            return $('<li/>');
-        },
         _getListElementDropDown: function (productify, settings, fieldElement) {
             var $listElement = $('<li/>').addClass('dropdown');
             $listElement.append($('<a/>').attr({
@@ -1799,13 +2067,16 @@ var _Field;
             }
             return searchFields.length > 0;
         },
-        _getGeneralSearch: function (productify, settings) {
-            var $listElement = fnProductify.controls._getListElement(productify, settings);
+        _getGeneralSearch: function () {
+            var $listElement = $('<li/>');
             var $search = $('<div class="input-group">' +
                 '<div class="input-group-prepend"><span class="input-group-text"><i class="fa fa-search "></i></span></div>' +
                 '<input id="" autocomplete="new-password" type="text" class="form-control text-xs " placeholder="produit">' +
                 '</div>');
-            $('input', $search).attr('id', models.controls.inputSearch.attr.id).addClass(models.controls.inputSearch.attr.class);
+            $('input', $search)
+                .attr('id', models.controls.inputSearch.attr.id)
+                .addClass(models.controls.inputSearch.attr.class)
+            ;
             return $listElement.append($search);
         },
         _getSelectOption: function (productify, settings, fieldElement, option) {
@@ -1821,7 +2092,7 @@ var _Field;
         },
         _getSelectFilter: function (productify, settings, fieldElement) {
             console.log({
-                fieldElement : fieldElement
+                fieldElement: fieldElement
             });
             var arrayOptions = Fn._getObjByProp(fieldElement, indexes.fieldOptions.options, []);
             var fieldData = Fn._getObjByProp(fieldElement, indexes.fieldOptions.data, []);
@@ -1863,7 +2134,7 @@ var _Field;
                 var $checkboxContainer = $('<div/>').addClass('form-check');
                 var $input = $('<input/>').addClass('form-check-input bg-primary')
                     .attr({
-                        type: 'checkbox', checked: 'checked', value: optionValue, id: "dp-check-" + optionName
+                        type: 'checkbox', checked: 'checked', value: optionValue, id: "dp-form-check-" + optionName
                     })
                     .attr(models.controls.fieldNameDataAttr, fieldData)
                     .attr(models.controls.dataFilterContainAttr, fieldElement[indexes.fieldOptions.filterContain])
@@ -1979,6 +2250,690 @@ var _Field;
             return null;
         }
     };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /** ********** Optionizer ************/
+
+    var _oIndexes = {
+        _maxQty : "_maxQty",
+        _isMulti : "_isMulti",
+        _price : "_price",
+        _groupId : "_groupId",
+        options : "options",
+        _extraOptions : "_extraOptions",
+        _extraOptionsTotal : "_extraOptionsTotal",
+        productTemplate : "productTemplate",
+        src : "src",
+        priceSrc : "priceSrc",
+        idSrc : "idSrc",
+        groupIdSrc : "groupIdSrc",
+        isMultiSrc : "isMultiSrc",
+        maxQtySrc : "maxQtySrc",
+        arrayOptionSrc : "arrayOptionSrc"
+    };
+
+
+    /**
+     * @module optionizer
+     * @type {optionizer}
+     * @param {Object} settingOption
+     * @param {productify} productify
+     * @param {Object} product
+     * @param {integer} qty
+     */
+    var Optionizer = $.fn.productify.optionizer = function $_fn_productify_optionizer(productify, product, qty) {
+        var that = this;
+        var optionizerOption = Fn._getObjByProp(productify.settings, indexes.optionizer, {});
+        that.settings = optionizerOption;
+        console.log(that.settings);
+        function isValid() {
+            var
+                priceSrc = Fn._getObjByProp(that.settings, _oIndexes.priceSrc, null),
+                idSrc = Fn._getObjByProp(that.settings, _oIndexes.idSrc, null),
+                groupIdSrc = Fn._getObjByProp(that.settings, _oIndexes.groupIdSrc, null),
+                isMultiSrc = Fn._getObjByProp(that.settings, _oIndexes.isMultiSrc, null),
+                maxQtySrc = Fn._getObjByProp(that.settings, _oIndexes.maxQtySrc, null),
+                arrayOption = Fn._getObjByProp(that.settings, _oIndexes.arrayOptionSrc, null)
+            ;
+            return Fn._isStringNotEmpty(priceSrc) && Fn._isStringNotEmpty(idSrc) && Fn._isStringNotEmpty(groupIdSrc) &&
+                Fn._isStringNotEmpty(isMultiSrc) && Fn._isStringNotEmpty(maxQtySrc) && Fn._isStringNotEmpty(arrayOption) &&
+                productify && ! $.isEmptyObject(product) && Fn._isInteger(qty) && qty > 0
+            ;
+
+        }
+
+        if(isValid() === false){
+            BootstrapNotify.danger("", "Configuration non correct");
+            return null;
+        }
+
+        qty = Math.abs(parseInt(qty));
+
+
+
+        that.productTemplate = that.settings.productTemplate;
+
+        that.qty = qty;
+
+
+        var _optionsGroup = Fn._getObjByProp(productify.option(), "productOptions", []);
+        if( !Fn._isSameType(_optionsGroup, [])){
+            _optionsGroup = [];
+        }
+
+        var _optionArray = [];
+        $.each(_optionsGroup, function (groupIndex, group) {
+            var groupId = Object.keys(group)[0];
+            if(Fn._isStringNotEmpty(groupId)){
+                group = Fn._getObjByProp(group, groupId, {});
+                var groupOptions = Fn._getObjByProp(group, 'options', []);
+                var maxQty = Fn._getObjByProp(group, that.settings[_oIndexes.maxQtySrc], 0);
+                maxQty = Fn._isNumeric(maxQty) ? Math.abs(parseInt(maxQty)) : 0;
+                var isMultiple = Fn._getObjByProp(group, 'isMultiple', true);
+
+
+                console.log({
+                    group : group
+                });
+                group[_oIndexes._isMulti] = isMultiple;
+                group[_oIndexes._groupId] = groupId;
+                group[_oIndexes._maxQty] = maxQty;
+                if(Fn._isSameType(groupOptions, [])){
+                    $.each(groupOptions, function (eIndex, element) {
+                        var optionId = Object.keys(element)[0];
+                        var option = Fn._getObjByProp(element, optionId, {});
+                        var price = Fn._getObjByProp(option, that.settings[_oIndexes.priceSrc], 0);
+                        price = Fn._isNumeric(price) ? Math.abs(parseInt(price)) : 0;
+                        option[_oIndexes._isMulti] = isMultiple;
+                        option[_oIndexes._groupId] = groupId;
+                        option[_oIndexes._maxQty] = maxQty;
+                        option[_oIndexes._price] = price;
+
+                    });
+                    _optionArray = _optionArray.concat(groupOptions);
+                }
+
+
+            }
+        });
+
+        console.log({
+            _optionArray : _optionArray
+        });
+        product[_oIndexes._extraOptions] = [];
+        that.product = product;
+
+        that.option = function (optionId) {
+            var returnOpt = null;
+            if(_optionArray.length > 0){
+                returnOpt =  _optionArray.find(function (element) {
+                    var id = Object.keys(element)[0];
+                    return optionId === id;
+                });
+            }
+            return returnOpt;
+        };
+
+        that.optionGroup = function () {
+            return _optionsGroup;
+        };
+
+        that.addOption = function (optionId) {
+            var opt = that.option(optionId);
+            console.log("that.addOption", {
+                opt : opt
+            });
+            if(!$.isEmptyObject(opt)){
+                var optId = Object.keys(opt)[0];
+                var optElem = Fn._getObjByProp(opt, optId, null);
+                if(!$.isEmptyObject(optElem)){
+                    if(optElem[_oIndexes._isMulti] === false){
+                        removeOptionByGroupId(optElem[_oIndexes._groupId]);
+                    }
+                }
+                that.product[_oIndexes._extraOptions].push(opt);
+            }
+            return that.update();
+        };
+
+        function removeOptionByGroupId(_groupId) {
+            if(Fn._isStringNotEmpty(_groupId)){
+                that.product[_oIndexes._extraOptions] = that.product[_oIndexes._extraOptions].filter(function (element) {
+                    var elementId = Object.keys(element)[0];
+                    var elementOption = element[elementId];
+                    return elementOption[_oIndexes._groupId] !== _groupId;
+                });
+            }
+
+        }
+
+        that.removeOption = function (optionId) {
+            that.product[_oIndexes._extraOptions] = that.product[_oIndexes._extraOptions].filter(function (element) {
+                console.log({
+                    element : element
+                });
+                var elementId = Object.keys(element)[0];
+                return elementId !== optionId;
+            });
+            return that.update();
+        };
+
+
+        that.update = function () {
+            fnOptionizer.product._updatePrice(that, productify);
+            return that;
+        };
+
+        that.total = function () {
+            var productTotal = getSingleProductTotal();
+            return (productTotal * that.qty);
+        };
+
+        function getSingleProductTotal() {
+            console.log("getSingleProductTotal", {
+                _extraOptions : that.product[_oIndexes._extraOptions]
+            });
+            var optionTotal = 0;
+            $.each(that.product[_oIndexes._extraOptions], function (index, element) {
+
+                var optionId = Object.keys(element)[0];
+                var option = Fn._getObjByProp(element, optionId, {});
+                optionTotal += option[_oIndexes._price];
+            });
+            that.product[_oIndexes._extraOptionsTotal] = optionTotal;
+
+            return that.product.price + optionTotal;
+        }
+
+
+
+
+
+
+        console.log({optionizerOption : optionizerOption, productify : productify, product : that.product, qty : qty, productifyOptions : _optionsGroup});
+
+
+        var isDrown = fnOptionizer._draw(that, productify);
+        if(isDrown){
+            fnOptionizer.initListener(that, productify);
+        }else {
+            productify.addToCart(that.product, qty);
+        }
+    };
+
+    var optionizerDefault = $.fn.productify.optionizer.defaults = {
+        template :{},
+        options : {}
+    };
+
+
+    optionizerDefault.template.productTemplate =
+        '<div class="product-item dp-product border m-b-5 m-t-5">' +
+            '{imageWebPath}' +
+            '<div class="product-all-details">' +
+                '<div class="visible-details">' +
+                    '<div class="product-details">' +
+                        '<p class="product-name primary text-sm">{name}</p>' +
+                        '<p class="product-desc text-xs font-weight-normal">{description}</p>' +
+                        '<div class="product-allergen">' +
+                        '<p class="text-accent text-xxs m-b-5 font-weight-normal">allergènes</p>' +
+                            '<div>' +
+                            '{allergen}' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="product-extra">' +
+                        '<div class="price">' +
+                            '<div class="cart">' +
+                            '<div class="product-price text-accent">{price}</div>' +
+                            '<input type="number" placeholder="1" value="1" min="1" class="qty-input form-control" disabled>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>'
+    ;
+
+
+    optionizerDefault.options = {
+        productTemplate : optionizerDefault.template.productTemplate,
+        src : "src",
+        priceSrc : "",
+        idSrc : "",
+        groupIdSrc : "",
+        isMultiSrc : "",
+        maxQtySrc : "",
+        arrayOptionSrc : "",
+        render : function (product, arrayOptions) {
+            if(arrayOptions.length){
+                var optionsText = [];
+                $.each(arrayOptions, function (index, element) {
+                    //<span class="badge badge-pill badge-secondary allergen">Alcool</span>
+                    var elementId = Object.keys(element)[0];
+                    element = element[elementId];
+                    var name = Fn._getObjByProp(element, "name", "");
+                    if(Fn._isStringNotEmpty(name)){
+                        optionsText.push(name);
+                    }
+                });
+                var $optionizerElements = $("<div/>").addClass("text-xxxxs ");
+                $optionizerElements.text(optionsText.join(", "));
+                var $optionizerPrice = $("<div/>").addClass("").text("Options ("+arrayOptions.length+") : +"+Fn._intToPrice(product._extraOptionsTotal));
+                var $container = $("<div/>").addClass("");
+                console.log({
+                    arrayOptions : arrayOptions
+                });
+                return $container
+                    .append($optionizerPrice)
+                    .append($optionizerElements)
+                ;
+            }
+            return null;
+        }
+    };
+
+    var fnOptionizer = $.fn.productify.optionizer.fn = {
+        debug: false,
+        $modal : $("#optionizer"),
+        _getObjectIdKeys : function (obj) {
+            return Object.keys(obj)[0];
+        },
+        _draw : function (optionizer, productify) {
+            var $product = fnOptionizer.product._getProduct(optionizer, productify);
+            var $options = fnOptionizer.option._getAllOption(optionizer, productify);
+            console.log($product);
+            if($product !== null && $options !== null){
+                var $modal = fnOptionizer.$modal;
+                var $form = $("<form/>");
+                $('.optionizer-title', $modal).text(optionizer.product.name);
+                var $modalBody = $(".modal-body", $modal);
+
+                fnOptionizer.product._updatePrice(optionizer, productify);
+
+                $form
+                    .append($product)
+                    .append($options)
+                ;
+                $modalBody
+                    .html("")
+                    .append($form)
+                ;
+                $modal
+                    .modal({
+                        // backdrop: 'static'
+                    })
+                ;
+                return true;
+            }else {
+                return false;
+            }
+
+        },
+        product: {
+            _getProduct: function (optionizer, productify) {
+                var
+                    productifySettings = productify.settings,
+                    arrayFields = productifySettings.fields,
+                    template = optionizer.productTemplate,
+                    $productItem = null
+                ;
+
+                if (Fn._isStringNotEmpty(template)) {
+                    $.each(arrayFields, function (index, field) {
+                        var dataSrc = Fn._getObjByProp(field, indexes.fieldOptions.data, '');
+                        if (Fn._isStringNotEmpty(dataSrc)) {
+                            var fieldValue = Fn._getObjByProp(optionizer.product, dataSrc, '');
+                            var fieldOption = Fn._getObjByProp(field, indexes.fieldOptions.options, null);
+                            var render = Fn._getObjByProp(field, indexes.fieldOptions.render, null);
+                            if (fnOptionizer.debug) {
+                                console.log({
+                                    field: field, fieldValue: fieldValue, fieldOption: fieldOption
+                                })
+                            }
+
+                            if (Fn._isFunction(render)) {
+                                var fieldRender = render(fieldValue, optionizer.product, field, fieldOption);
+                                fieldValue = Fn._isNotUndefined(fieldRender) ? fieldRender : fieldValue;
+                            }
+                            if (!Fn._isStringNotEmpty(fieldValue)) {
+                                fieldValue = "";
+                            }
+                            var searchRegExp = new RegExp('{' + dataSrc + '}', 'g');
+                            template = template.replace(searchRegExp, fieldValue);
+                        }
+
+                    });
+                    $productItem = $(template);
+                    $("input.qty-input", $productItem).val(optionizer.qty);
+                    if (Fn._isStringNotEmpty(optionizer.product.idCode)) {
+                        $productItem.attr(models.dataIdAttr, optionizer.product.idCode).addClass(models.product.attr.class);
+                        return $productItem;
+                    }
+                }
+                return null;
+            },
+            _animateBtn : function () {
+                var $btn = $("#optionizer-confirm", fnOptionizer.$modal);
+                Animation._animate($btn, Productify.defaults.animation.bounceIn);
+            },
+            _updatePrice : function (optionizer, productify) {
+                fnOptionizer.product._animateBtn();
+                $("#optionizer-total", fnOptionizer.$modal).text(Fn._intToPrice(optionizer.total()));
+            }
+        },
+        option : {
+            _getAllOption : function (optionizer, productify) {
+                var optionsGroup = optionizer.optionGroup() ;
+                var $allOption = null;
+                if(Fn._isSameType(optionsGroup, []) && optionsGroup.length > 0){
+                    $allOption = $("<div/>").addClass("dp-optionizer-container");
+                    var hasOption = false;
+                    $.each(optionsGroup, function (index, optionCategory) {
+                        var $category = fnOptionizer.option._getCategoryOption(optionizer, productify, optionCategory);
+                        if($category !== null){
+                            hasOption = true;
+                            $allOption.append($category.addClass(" border rounded m-b-5 text-uppercase"));
+                        }
+                    });
+                    if(hasOption){
+                        return $allOption;
+                    }
+                }
+                return null;
+
+            },
+            _getCategoryOption : function (optionizer, productify, optionCategory) {
+                var $category = null;
+                var categoryId = Object.keys(optionCategory)[0];
+                var productOptions = Fn._getObjByProp(optionizer.product, "productOptions");
+                if( Fn._isStringNotEmpty(categoryId) && Fn._isStringNotEmpty(productOptions) && productOptions.includes(categoryId) ){
+                    optionCategory = Fn._getObjByProp(optionCategory, categoryId);
+                    var isMultiple = Fn._getObjByProp(optionCategory, _oIndexes._isMulti, null);
+                    console.log({
+                        optionCategory : optionCategory
+                    });
+                    if( Fn._isSameType(isMultiple, true) && !$.isEmptyObject(optionCategory) ){
+                        if(isMultiple){
+                            $category = fnOptionizer.option._getCategoryOptionCheckBox(
+                                optionizer, productify, optionCategory, categoryId
+                            );
+                        }else {
+                            $category = fnOptionizer.option._getCategoryOptionRadio(
+                                optionizer, productify, optionCategory, categoryId
+                            );
+                        }
+                    }
+                }
+                return $category;
+            },
+            _getCategoryOptionCheckBox : function (optionizer, productify, optionCategory, categoryId) {
+                console.log({
+                    optionCategory : optionCategory
+                });
+                var arrayOption = Fn._getObjByProp(optionCategory, "options", []);
+                var categoryName = Fn._getObjByProp(optionCategory, "name", "");
+                var categoryDescription = Fn._getObjByProp(optionCategory, "description", "");
+                if(Fn._isSameType(arrayOption, []) && arrayOption.length > 0 && Fn._isStringNotEmpty(categoryId)){
+                    var $categoryCheckBox = $("<div/>").addClass("optionizer-checkbox-container").attr("data-optionizer-id", categoryId);
+                    $categoryCheckBox
+                        .append( $("<div/>").addClass("text-sm primary m-b-10").text(categoryName) )
+                        .append( $("<div/>").addClass("text-xs m-b-10").text(categoryDescription) )
+                    ;
+                    var hasCheckBox = false;
+                    $.each(arrayOption, function (index, option) {
+
+                        console.log({
+                            $optionCheckbox : option
+                        });
+                        var optionId = Object.keys(option)[0];
+                        if(Fn._isStringNotEmpty(optionId) ){
+                            option = Fn._getObjByProp(option, optionId);
+                            if( !$.isEmptyObject(option)){
+                                var $optionCheckbox = fnOptionizer.option._getCheckBox(optionizer, productify, option, optionId);
+                                console.log({
+                                    $optionCheckbox : $optionCheckbox
+                                });
+                                if($optionCheckbox !== null){
+                                    hasCheckBox = true;
+                                    $categoryCheckBox.append($optionCheckbox);
+                                }
+                            }
+
+                        }
+                    });
+                    if(hasCheckBox){
+                        return $categoryCheckBox;
+                    }
+                }
+                return null;
+            },
+            _getCategoryOptionRadio : function (optionizer, productify, optionCategory, categoryId) {
+                var arrayOption = Fn._getObjByProp(optionCategory, "options", []);
+                var categoryName = Fn._getObjByProp(optionCategory, "name", "");
+                var categoryDescription = Fn._getObjByProp(optionCategory, "description", "");
+                if(Fn._isSameType(arrayOption, []) && arrayOption.length > 0 && Fn._isStringNotEmpty(categoryId)){
+                    var $categoryCheckBox = $("<div/>").addClass("optionizer-radio-container").attr("data-optionizer-id", categoryId);
+                    $categoryCheckBox
+                        .append( $("<div/>").addClass("text-sm primary m-b-10").text(categoryName) )
+                        .append( $("<div/>").addClass("text-xs m-b-10").text(categoryDescription) )
+                    ;
+                    var hasCheckBox = false;
+                    $.each(arrayOption, function (index, option) {
+                        var optionId = Object.keys(option)[0];
+                        if(Fn._isStringNotEmpty(optionId) ){
+                            option = Fn._getObjByProp(option, optionId);
+                            if( !$.isEmptyObject(option)){
+                                var $optionCheckbox = fnOptionizer.option._getRadio(optionizer, productify, option, optionId);
+                                if($optionCheckbox !== null){
+                                    hasCheckBox = true;
+                                    $categoryCheckBox.append($optionCheckbox);
+                                }
+                            }
+
+                        }
+                    });
+                    if(hasCheckBox){
+                        return $categoryCheckBox;
+                    }
+                }
+                return null;
+            },
+            _getRadio : function (optionizer, productify, option, optionId) {
+                var categoryId = Fn._getObjByProp(option, "category");
+                if(Fn._isStringNotEmpty(optionId) && Fn._isStringNotEmpty(categoryId) && !$.isEmptyObject(option)){
+                    var checkboxName = "optionizer-"+categoryId;
+                    var checkboxId = "optionizer-"+optionId;
+                    var $checkBoxContainer = $('<div/>').addClass('form-check m-l-10 m-r-10');
+                    var price = Fn._getObjByProp(option, "price", 0);
+                    var $inputCheckBox = $("<input/>")
+                        .attr({
+                            type : "radio", name : checkboxName, id : checkboxId, value : optionId,
+                            required : true, "data-optionizer" : true
+                        })
+                        .addClass("form-check-input")
+                    ;
+                    var $label = $("<label/>")
+                        .attr({
+                            for : checkboxId
+                        })
+                        .addClass("form-check-label")
+                    ;
+                    $label.text(option.name);
+
+                    $checkBoxContainer.append($inputCheckBox).append($label);
+                    if(Fn._isSameType(price, 0) && price >0){
+                        var $price = $("<span/>").addClass('float-right').text("+ "+Fn._intToPrice(price));
+                        $checkBoxContainer.append($price);
+                    }
+                    return $checkBoxContainer;
+                }
+                return null;
+            },
+            _getCheckBox : function (optionizer, productify, option, optionId) {
+                var categoryId = Fn._getObjByProp(option, "category");
+                if(Fn._isStringNotEmpty(optionId) && Fn._isStringNotEmpty(categoryId) && !$.isEmptyObject(option)){
+                    var checkboxName = "optionizer-"+categoryId;
+                    var checkboxId = "optionizer-"+optionId;
+                    var $checkBoxContainer = $('<div/>').addClass('form-check m-l-10 m-r-10');
+                    var price = Fn._getObjByProp(option, "price", 0);
+                    var $inputCheckBox = $("<input/>")
+                        .attr({
+                            type : "checkbox", name : checkboxName, id : checkboxId,
+                            value : optionId, "data-optionizer" : true
+                        })
+                        .addClass("form-check-input")
+                    ;
+                    var $label = $("<label/>")
+                        .attr({ for : checkboxId })
+                        .addClass("form-check-label")
+                    ;
+                    $label.text(option.name);
+
+                    $checkBoxContainer.append($inputCheckBox).append($label);
+                    if(Fn._isSameType(price, 0) && price >0){
+                        var $price = $("<span/>").addClass('float-right').text("+ "+Fn._intToPrice(price));
+                        $checkBoxContainer.append($price);
+                    }
+                    return $checkBoxContainer;
+                }
+                return null;
+            },
+            _enableDisableCheckbox : function (optionizer, productify, optionId) {
+                if(Fn._isStringNotEmpty(optionId)){
+                    var option = optionizer.option(optionId);
+                    if(!$.isEmptyObject(option)){
+                        option = option[optionId];
+                        var groupId = Fn._getObjByProp(option, _oIndexes._groupId, null);
+                        var maxQty = Fn._getObjByProp(option, _oIndexes._maxQty, 0);
+                        if(Fn._isStringNotEmpty(groupId) && Fn._isInteger(maxQty) && maxQty > 0){
+                            var $checked = $("[name='optionizer-"+groupId+"']:checked");
+                            var $notChecked = $("[name='optionizer-"+groupId+"']:not(:checked)");
+                            if($checked.length < maxQty){
+                                $notChecked.prop("disabled", false);
+                            }else {
+                                $notChecked.prop("disabled", true);
+                            }
+                            console.log({
+                                $checked : $checked,
+                                $notChecked : $notChecked,
+                                groupId : groupId,
+                                maxQty : maxQty
+                            })
+                        }
+                    }
+                    console.log({
+                        option : option
+                    });
+                }
+            }
+        }
+    };
+
+    fnOptionizer.render = function (product, arrayOptions) {
+        console.log({
+            arrayOptions : arrayOptions
+        });
+    };
+
+
+    var optionizerListener = {
+        _modalHide : function () {
+            fnOptionizer.$modal.on('hidden.bs.modal', function (e) {
+                $(".modal-body", this).empty();
+                $('.optionizer-title', this).text("");
+            })
+        },
+        _formValidate : function (optionizer, productify) {
+            $("form", fnOptionizer.$modal).validate({
+                errorClass: 'is-invalid',
+                validClass: 'is-valid',
+                errorElement: "div",
+                errorPlacement: function (error, element) {
+                    element.parent().append(error);
+                },
+                submitHandler: function(form) {
+                    productify.addToCart(optionizer.product, optionizer.qty);
+                    fnOptionizer.$modal.modal('hide');
+                }
+            });
+        },
+        _confirmProduct : function (optionizer, productify) {
+            var $btn = $("#optionizer-confirm", fnOptionizer.$modal);
+            if($btn.length){
+                $btn.off('click').on('click', function () {
+                    $("form", fnOptionizer.$modal).submit();
+                });
+            }
+        },
+        _chooseRadio : function (optionizer, productify) {
+            var $radio = $("input[type='radio'][data-optionizer='true']", fnOptionizer.$modal);
+            console.log({
+                $radio : $radio
+            });
+            if($radio.length){
+                $radio.off('change').on('change', function () {
+                    var $this = $(this);
+                    var optionId = $this.val();
+                    if(Fn._isStringNotEmpty(optionId)){
+                        optionizer.addOption(optionId);
+                    }
+                    console.log("$radio changed", {
+                        $this : $this, optionId : optionId
+                    });
+
+                });
+            }
+        },
+        _checkboxClick : function (optionizer, productify) {
+            var $checkbox = $("input[type='checkbox'][data-optionizer='true']", fnOptionizer.$modal);
+            console.log({
+                $checkbox : $checkbox
+            });
+            if($checkbox.length){
+                $checkbox.off('change').on('change', function () {
+                    var $this = $(this);
+                    var optionId = $this.val();
+                    if(Fn._isStringNotEmpty(optionId)){
+                        var isChecked = $this.is(':checked');
+                        if(isChecked){
+                            optionizer.addOption(optionId);
+                        }else {
+                            optionizer.removeOption(optionId);
+                        }
+                        fnOptionizer.option._enableDisableCheckbox(optionizer, productify, optionId);
+                        console.log({
+                            isChecked : isChecked
+                        });
+                    }
+                    console.log("$checkbox changed", {
+                        $this : $this, optionId : optionId
+                    });
+                });
+            }
+        }
+    };
+
+    fnOptionizer.initListener = function (optionizer, productify) {
+        $.each(optionizerListener, function (index, listener) {
+            if (Fn._isFunction(listener)) {
+                listener(optionizer, productify);
+            }
+        });
+    }
+
 
 
 }(jQuery));
